@@ -17,7 +17,7 @@
       <span class="font-black text-xl tracking-wider text-slate-800">SLHS QUIZ</span>
     </div>
 
-    <!-- 使用者資訊 -->
+    <!-- 使用者資訊列 -->
     <div id="nav-user-bar" class="hidden flex items-center gap-3">
       <div class="flex items-center gap-2">
         <div id="user-avatar" class="w-8 h-8 rounded-full bg-purple-600 text-white flex items-center justify-center text-xs font-bold shadow-sm">H</div>
@@ -39,7 +39,7 @@
         <h2 class="text-2xl font-black text-slate-800 mb-2">電腦軟體應用丙級</h2>
         <p class="text-xs text-slate-500 mb-8 leading-relaxed">請使用 Google 帳號登入系統，系統將自動記錄作答統計、題庫涵蓋率與錯題本。</p>
         
-        <button id="btn-login" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 px-4 rounded-2xl shadow-md transition flex items-center justify-center gap-3 text-sm">
+        <button id="btn-login" class="w-full bg-[#4F46E5] hover:bg-[#4338CA] text-white font-bold py-3.5 px-4 rounded-2xl shadow-md transition flex items-center justify-center gap-3 text-sm">
           <i class="fa-brands fa-google text-base"></i> 使用 Google 帳號登入
         </button>
       </div>
@@ -73,7 +73,7 @@
           <!-- 錯題回顧 -->
           <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex justify-between items-center">
             <div>
-              <div class="text-xs font-semibold text-slate-400">錯題回顧 (專業操作證題庫)</div>
+              <div class="text-xs font-semibold text-slate-400">錯題回顧 (丙級學科題庫)</div>
               <div class="text-3xl font-black text-rose-500 mt-2"><span id="dash-wrong-count">0</span> <span class="text-xs font-bold text-slate-400">題待複習</span></div>
             </div>
             <button id="btn-filter-wrong-direct" class="bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-bold px-4 py-2 rounded-xl transition flex items-center gap-1.5 border border-rose-200">
@@ -195,17 +195,16 @@
       </div>
     </section>
 
-    <!-- 4. 測驗結算與作答詳情 (完全 1:1 復刻) -->
+    <!-- 4. 測驗結算與作答詳情 -->
     <section id="view-report" class="hidden max-w-3xl mx-auto space-y-8">
       
-      <!-- 結算頂部大白卡 -->
+      <!-- 頂部結算大卡 -->
       <div class="bg-white rounded-3xl p-8 md:p-10 border border-slate-200 shadow-sm text-center space-y-6">
         <div>
           <h2 class="text-2xl md:text-3xl font-black text-slate-800 mb-1">測驗結算</h2>
           <p class="text-xs text-slate-400">您的練習紀錄已同步至資料庫</p>
         </div>
 
-        <!-- 雙數據方塊 (正解題數 / 本次題數) -->
         <div class="flex justify-center gap-4 max-w-md mx-auto">
           <div class="flex-1 bg-slate-50/80 rounded-2xl p-4 border border-slate-100">
             <div class="text-xs font-semibold text-slate-400 mb-1">正確答題</div>
@@ -217,7 +216,6 @@
           </div>
         </div>
 
-        <!-- 返回儀表板按鈕 -->
         <div>
           <button id="btn-report-back" class="bg-[#4F46E5] hover:bg-[#4338CA] text-white font-extrabold text-sm py-3.5 px-10 rounded-2xl shadow-md transition duration-150 flex items-center gap-2 mx-auto">
             <i class="fa-solid fa-house text-xs"></i> 返回儀表板
@@ -225,13 +223,11 @@
         </div>
       </div>
 
-      <!-- 下方本次作答詳情清單 -->
+      <!-- 下方作答詳情清單 -->
       <div class="space-y-4">
         <div class="flex items-center gap-2 font-black text-slate-800 text-base">
           <i class="fa-solid fa-list-check text-indigo-600"></i> 本次作答詳情
         </div>
-
-        <!-- 題目列表動態容器 -->
         <div id="report-question-list" class="space-y-4"></div>
       </div>
 
@@ -239,12 +235,12 @@
 
   </main>
 
+  <!-- Firebase 官方模組化 SDK (v10.8.0 穩定版) -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { 
       getAuth, 
-      signInWithRedirect, 
-      getRedirectResult, 
+      signInWithPopup, 
       GoogleAuthProvider, 
       signOut, 
       onAuthStateChanged 
@@ -257,6 +253,7 @@
       updateDoc 
     } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
+    // 專屬 Firebase 連線金鑰
     const firebaseConfig = {
       apiKey: "AIzaSyAeeI3DJF1rp6BXDLOHEHS9Q7QPC7U4NNC",
       authDomain: "slhs-quiz.firebaseapp.com",
@@ -270,10 +267,16 @@
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
+
+    // Google 提供者設定
     const provider = new GoogleAuthProvider();
+    provider.setCustomParameters({
+      prompt: 'select_account'
+    });
 
     const QUESTION_BANK = window.QUESTION_BANK || [];
 
+    // 系統狀態變數
     let currentUser = null;
     let userData = {
       wrongList: [],
@@ -289,6 +292,7 @@
     let examUserRecords = [];
     let examCurrentIndex = 0;
 
+    // 頁面切換控制
     function showView(viewId) {
       ["view-login", "view-dashboard", "view-exam", "view-report"].forEach(id => {
         document.getElementById(id).classList.add("hidden");
@@ -297,11 +301,7 @@
       window.scrollTo(0, 0);
     }
 
-    getRedirectResult(auth).catch(err => {
-      console.error("登入轉址失敗：", err);
-      alert(`登入發生異常：${err.message}`);
-    });
-
+    // 監聽登入狀態
     onAuthStateChanged(auth, async (user) => {
       if (user) {
         currentUser = user;
@@ -319,9 +319,27 @@
       }
     });
 
-    document.getElementById("btn-login").onclick = () => signInWithRedirect(auth, provider);
+    // 登入點擊事件（加入完整錯誤回報）
+    document.getElementById("btn-login").onclick = async () => {
+      try {
+        console.log("正在開啟 Google 登入視窗...");
+        await signInWithPopup(auth, provider);
+      } catch (error) {
+        console.error("登入錯誤：", error);
+        if (error.code === 'auth/popup-blocked') {
+          alert("登入視窗被瀏覽器封鎖！請查看網址列右側，允許此網站顯示快顯視窗（彈跳視窗）。");
+        } else if (error.code === 'auth/unauthorized-domain') {
+          alert("此網域尚未在 Firebase 授權！請確認 Firebase 的 Authorized domains 包含 hatvito.github.io");
+        } else {
+          alert(`登入發生異常：\n[${error.code}]\n${error.message}`);
+        }
+      }
+    };
+
+    // 登出
     document.getElementById("btn-logout").onclick = () => signOut(auth);
 
+    // 雲端資料庫存取
     async function loadUserData() {
       const userRef = doc(db, "quiz_profiles", currentUser.uid);
       const snap = await getDoc(userRef);
@@ -337,6 +355,7 @@
       await updateDoc(userRef, userData);
     }
 
+    // 更新主看板數據
     function updateDashboardUI() {
       const accuracy = userData.totalAnswered > 0 
         ? ((userData.correctCount / userData.totalAnswered) * 100).toFixed(1)
@@ -346,7 +365,7 @@
       document.getElementById("dash-exam-count").textContent = userData.totalExams || 0;
       document.getElementById("dash-total-answered").textContent = userData.totalAnswered || 0;
       
-      const wrongLen = userData.wrongList.length;
+      const wrongLen = userData.wrongList ? userData.wrongList.length : 0;
       document.getElementById("dash-wrong-count").textContent = wrongLen;
       document.getElementById("label-wrong-accumulate").textContent = wrongLen;
 
@@ -376,7 +395,7 @@
       document.getElementById("btn-start").click();
     };
 
-    // 開始測驗
+    // 開始測驗抽題
     document.getElementById("btn-start").onclick = () => {
       const cat = document.getElementById("config-category").value;
       const isWrongOnly = document.getElementById("toggle-wrong-only").checked;
@@ -404,6 +423,7 @@
       renderQuestionStep(0);
     };
 
+    // 渲染單一題目
     function renderQuestionStep(idx) {
       examCurrentIndex = idx;
       const q = activeExamPool[idx];
@@ -426,6 +446,7 @@
       document.getElementById("exam-top-progressbar").style.width = `${pct}%`;
     }
 
+    // 選項按鈕點擊作答
     document.querySelectorAll(".btn-select-opt").forEach(btn => {
       btn.onclick = () => {
         const choice = parseInt(btn.dataset.val, 10);
@@ -433,6 +454,7 @@
       };
     });
 
+    // 鍵盤數字鍵作答 1, 2, 3, 4
     window.addEventListener("keydown", (e) => {
       if (document.getElementById("view-exam").classList.contains("hidden")) return;
       if (["1", "2", "3", "4"].includes(e.key)) {
@@ -453,13 +475,14 @@
       }
     }
 
+    // 終止測驗
     document.getElementById("btn-quit-exam").onclick = () => {
       if (confirm("確定要終止測驗嗎？本次作答將不會計入成績。")) {
         showView("view-dashboard");
       }
     };
 
-    // 測驗結束與結算
+    // 測驗結束與資料結算
     async function finishExam() {
       let correctInThisExam = 0;
 
@@ -492,11 +515,11 @@
       await syncUserData();
       updateDashboardUI();
 
-      // 填充結算面板
+      // 填充結算數據
       document.getElementById("report-correct-num").textContent = correctInThisExam;
       document.getElementById("report-total-num").textContent = examUserRecords.length;
 
-      // 渲染「本次作答詳情」列表 (1:1 復刻紅綠邊條與粉藍對比方塊)
+      // 渲染「本次作答詳情」清單
       const listContainer = document.getElementById("report-question-list");
       listContainer.innerHTML = "";
 
@@ -504,11 +527,9 @@
         const card = document.createElement("div");
         const isCorrect = record.isCorrect;
         
-        // 邊條色彩與圓圈徽章
         const borderClass = isCorrect ? "border-l-4 border-l-emerald-500" : "border-l-4 border-l-rose-500";
         const badgeClass = isCorrect ? "bg-emerald-50 text-emerald-600" : "bg-rose-50 text-rose-500";
 
-        // 選項列表 HTML
         const optionsHtml = record.q.options.map((opt, oIdx) => `
           <div class="flex items-start gap-2 ${oIdx === record.q.answer ? 'font-bold text-slate-800' : 'text-slate-500'}">
             <span>(${oIdx + 1})</span>
@@ -516,7 +537,6 @@
           </div>
         `).join("");
 
-        // 你的作答與正確答案標籤
         const userChoiceText = `(${record.userChoice + 1}) ${record.q.options[record.userChoice]}`;
         const correctAnswerText = `(${record.q.answer + 1}) ${record.q.options[record.q.answer]}`;
 
@@ -530,14 +550,12 @@
               <div class="text-xs text-indigo-500 font-bold">${record.q.category} (原題號: ${record.q.id})</div>
               <h3 class="font-bold text-slate-800 text-base leading-snug">${record.q.title}</h3>
               
-              <!-- 全部選項預覽 -->
               <div class="space-y-1.5 pt-2 text-xs leading-relaxed">
                 ${optionsHtml}
               </div>
             </div>
           </div>
 
-          <!-- 對比區塊：您的作答 vs 正確答案 (並列雙色框) -->
           <div class="grid grid-cols-1 md:grid-cols-2 gap-3 pt-3 border-t border-slate-100 text-xs font-medium">
             <div class="bg-[#FFF5F5] text-rose-600 p-3.5 rounded-xl border border-rose-100 flex flex-col justify-center">
               <span class="text-[11px] text-rose-400 font-bold mb-1">您的作答</span>
